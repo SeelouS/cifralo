@@ -1,7 +1,6 @@
 package app.algoritmos_criptograficos;
 
-import java.util.Dictionary;
-import java.util.List;
+import java.util.*;
 
 public interface Algoritmo {
 
@@ -13,5 +12,11 @@ public interface Algoritmo {
     String descifra(String mensajeCifrado, List<Integer> parametrosParaDescifrar);
     default String info() {
         return "Algoritmo: " + getNombre() + "\n" + "Parametros: " + getParametros();
+    }
+    default Set<String> getKeys(Dictionary<String, Integer> dict) {
+        return new HashSet<>(Collections.list(dict.keys()));
+    }
+    default Set<Integer> getElems(Dictionary<String, Integer> dict) {
+        return new HashSet<>(Collections.list(dict.elements()));
     }
 }
