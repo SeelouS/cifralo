@@ -11,17 +11,13 @@ public class Caesar implements Algoritmo {
     private Map<String, Integer> parametros;
     private Abecedario abecedario;
 
-    public Caesar(){
-        this.abecedario = new Abecedario();
-        this.parametros = new HashMap<>(1);
-        parametros.put("translacion", 2);
-
-    }
-
     public Caesar(int clave) {
         this.abecedario = new Abecedario();
-        if(clave >= abecedario.getSize()) {
-            throw new ParametroIncorrecto("Translacion demasiado grande. Pon un numero más pequeño");
+        boolean parametroCorrecto = parametrosCorrectos(List.of(clave));
+
+        if(!parametroCorrecto) {
+            throw new ParametroIncorrecto("El parámetro que has pasado no es correcto. Comprueba que esté entre 0 y " +
+            this.abecedario.getSize() + "(excluidos)\n");
         }
         this.parametros = new HashMap<>(1);
         parametros.put("translacion", clave);
@@ -29,8 +25,11 @@ public class Caesar implements Algoritmo {
 
     public Caesar (int clave, Abecedario abc) {
         this.abecedario = abc;
-        if(clave >= abecedario.getSize()) {
-            throw new ParametroIncorrecto("Translacion demasiado grande. Pon un numero más pequeño");
+        boolean parametroCorrecto = parametrosCorrectos(List.of(clave));
+
+        if(!parametroCorrecto) {
+            throw new ParametroIncorrecto("El parámetro que has pasado no es correcto. Comprueba que esté entre 0 y " +
+                    this.abecedario.getSize() + "(excluidos)\n");
         }
         this.parametros = new HashMap<>(1);
         parametros.put("translacion", clave);
@@ -48,14 +47,17 @@ public class Caesar implements Algoritmo {
 
     @Override
     public void setParametros(List<Integer> nuevosParametros) {
-        if (nuevosParametros.size() != this.parametros.size()) {
-            throw new ParametroIncorrecto("Has definido un número incorrecto de parámetros.|" +
-                    "\n" + "Definido: " + nuevosParametros.size() + "\n" + "Necesarios: " + this.parametros.size());
-        }
-        int posLista = 0;
-        for (String key: getKeys(this.parametros)) {
-            this.parametros.put(key, nuevosParametros.get(posLista));
-            posLista++;
+        if (nuevosParametros.size() != 1) {
+            System.err.println("Has definido un número incorrecto de parámetros.|" +
+                    "\n" + "Definido: " + nuevosParametros.size() + "\n" + "Necesarios: 1");
+            System.err.println("No se cambiarán los parámetros.");
+        } else if (!parametrosCorrectos(nuevosParametros)){
+            System.err.println("El parámetro que has pasado no es correcto. Comprueba que esté entre 0 y " +
+                    this.abecedario.getSize() + "(excluidos)\n" +
+                    "No se cambiarán los parámetros");
+
+        } else {
+            this.parametros.put("translacion", nuevosParametros.get(0));
         }
 
     }
@@ -72,6 +74,31 @@ public class Caesar implements Algoritmo {
         }
 
         return resultado.toString();
+    }
+
+
+
+    @Override
+    public String descifra(String mensajeCifrado, List<Integer> parametrosParaDescifrar) {
+        int key = parametrosParaDescifrar.get(0);
+        StringBuilder resultado = new StringBuilder(mensajeCifrado.length());
+
+        for (char caracter : mensajeCifrado.toCharArray()) {
+            resultado.append(translada(caracter, key, true));
+        }
+
+        return resultado.toString();
+    }
+
+    @Override
+    public String descifra(String mensajeCifrado, boolean fuerzaBruta) {
+        String resultado;
+        if(fuerzaBruta) {
+            resultado = descifraBruta(mensajeCifrado);
+        } else {
+            resultado = descifra(mensajeCifrado, new ArrayList<>(getElems(this.parametros)));
+        }
+        return resultado;
     }
 
     private char translada(char caracter, int key, boolean retroceso) {
@@ -112,26 +139,7 @@ public class Caesar implements Algoritmo {
         return resultado;
     }
 
-    @Override
-    public String descifra(String mensajeCifrado, List<Integer> parametrosParaDescifrar) {
-        int key = parametrosParaDescifrar.get(0);
-        StringBuilder resultado = new StringBuilder(mensajeCifrado.length());
-
-        for (char caracter : mensajeCifrado.toCharArray()) {
-            resultado.append(translada(caracter, key, true));
-        }
-
-        return resultado.toString();
-    }
-
-    @Override
-    public String descifra(String mensajeCifrado, boolean fuerzaBruta) {
-        String resultado;
-        if(fuerzaBruta) {
-            resultado = descifraBruta(mensajeCifrado);
-        } else {
-            resultado = descifra(mensajeCifrado, new ArrayList<>(getElems(this.parametros)));
-        }
-        return resultado;
+    private boolean parametrosCorrectos(List<Integer> nuevosParametros) {
+        return nuevosParametros.get(0) < this.abecedario.getSize() && nuevosParametros.get(0) > 0;
     }
 }

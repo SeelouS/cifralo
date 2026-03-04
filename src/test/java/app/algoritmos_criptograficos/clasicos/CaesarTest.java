@@ -7,6 +7,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,13 +29,6 @@ class CaesarTest {
     class ConstructorTests {
 
         @Test
-        @DisplayName("Constructor por defecto: clave = 2")
-        void constructorPorDefecto() {
-            Caesar caesar = new Caesar();
-            assertEquals(2, caesar.getParametros().get("translacion"));
-        }
-
-        @Test
         @DisplayName("Constructor con clave válida")
         void constructorConClaveValida() {
             Caesar caesar = new Caesar(5);
@@ -41,25 +36,36 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Constructor con clave = 0")
-        void constructorConClaveCero() {
-            Caesar caesar = new Caesar(0);
-            assertEquals(0, caesar.getParametros().get("translacion"));
-        }
-
-        @Test
-        @DisplayName("Constructor con clave = 1")
+        @DisplayName("Constructor con clave = 1 (mínima válida)")
         void constructorConClaveUno() {
             Caesar caesar = new Caesar(1);
             assertEquals(1, caesar.getParametros().get("translacion"));
         }
 
+        @ParameterizedTest
+        @ValueSource(ints = {1, 2, 5, 10, 20, 50})
+        @DisplayName("Constructor con varias claves válidas")
+        void constructorConVariasClavesValidas(int clave) {
+            Caesar caesar = new Caesar(clave);
+            assertEquals(clave, caesar.getParametros().get("translacion"));
+        }
+
         @Test
-        @DisplayName("Constructor con clave demasiado grande lanza excepción")
-        void constructorConClaveDemasiadoGrande() {
-            Abecedario abc = new Abecedario();
-            int claveInvalida = abc.getSize();
-            assertThrows(ParametroIncorrecto.class, () -> new Caesar(claveInvalida));
+        @DisplayName("Constructor con clave = 0 lanza excepción")
+        void constructorConClaveCero() {
+            assertThrows(ParametroIncorrecto.class, () -> new Caesar(0));
+        }
+
+        @Test
+        @DisplayName("Constructor con clave negativa lanza excepción")
+        void constructorConClaveNegativa() {
+            assertThrows(ParametroIncorrecto.class, () -> new Caesar(-1));
+        }
+
+        @Test
+        @DisplayName("Constructor con clave muy negativa lanza excepción")
+        void constructorConClaveMuyNegativa() {
+            assertThrows(ParametroIncorrecto.class, () -> new Caesar(-100));
         }
 
         @Test
@@ -70,13 +76,22 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Constructor con clave muy grande lanza excepción")
-        void constructorConClaveMuyGrande() {
+        @DisplayName("Constructor con clave demasiado grande lanza excepción")
+        void constructorConClaveDemasiadoGrande() {
             assertThrows(ParametroIncorrecto.class, () -> new Caesar(9999));
         }
 
         @Test
-        @DisplayName("Constructor con abecedario personalizado")
+        @DisplayName("Constructor con clave máxima válida (tamaño - 1)")
+        void constructorConClaveMaximaValida() {
+            Abecedario abc = new Abecedario();
+            int claveMaxima = abc.getSize() - 1;
+            Caesar caesar = new Caesar(claveMaxima);
+            assertEquals(claveMaxima, caesar.getParametros().get("translacion"));
+        }
+
+        @Test
+        @DisplayName("Constructor con abecedario personalizado y clave válida")
         void constructorConAbecedarioPersonalizado() {
             List<Character> letras = List.of('a', 'b', 'c', 'd', 'e');
             Abecedario abc = new Abecedario(letras);
@@ -85,11 +100,19 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Constructor con abecedario personalizado y clave inválida")
+        @DisplayName("Constructor con abecedario personalizado y clave = tamaño lanza excepción")
         void constructorConAbecedarioPersonalizadoClaveInvalida() {
             List<Character> letras = List.of('a', 'b', 'c');
             Abecedario abc = new Abecedario(letras);
             assertThrows(ParametroIncorrecto.class, () -> new Caesar(3, abc));
+        }
+
+        @Test
+        @DisplayName("Constructor con abecedario personalizado y clave = 0 lanza excepción")
+        void constructorConAbecedarioPersonalizadoClaveCero() {
+            List<Character> letras = List.of('a', 'b', 'c');
+            Abecedario abc = new Abecedario(letras);
+            assertThrows(ParametroIncorrecto.class, () -> new Caesar(0, abc));
         }
 
         @Test
@@ -99,6 +122,13 @@ class CaesarTest {
             Abecedario abc = new Abecedario(letras);
             Caesar caesar = new Caesar(3, abc);
             assertEquals(3, caesar.getParametros().get("translacion"));
+        }
+
+        @Test
+        @DisplayName("Mensaje de excepción contiene información del rango válido")
+        void mensajeExcepcionContienRango() {
+            ParametroIncorrecto ex = assertThrows(ParametroIncorrecto.class, () -> new Caesar(0));
+            assertTrue(ex.getMessage().contains("0"));
         }
     }
 
@@ -113,7 +143,7 @@ class CaesarTest {
         @Test
         @DisplayName("getNombre devuelve 'Caesar'")
         void getNombre() {
-            Caesar caesar = new Caesar();
+            Caesar caesar = new Caesar(3);
             assertEquals("Caesar", caesar.getNombre());
         }
 
@@ -138,7 +168,7 @@ class CaesarTest {
         @Test
         @DisplayName("getParametros tiene tamaño 1")
         void getParametrosTamano() {
-            Caesar caesar = new Caesar();
+            Caesar caesar = new Caesar(1);
             assertEquals(1, caesar.getParametros().size());
         }
 
@@ -161,8 +191,22 @@ class CaesarTest {
     @DisplayName("setParametros")
     class SetParametrosTests {
 
+        private final PrintStream originalErr = System.err;
+        private ByteArrayOutputStream errContent;
+
+        @BeforeEach
+        void capturarStdErr() {
+            errContent = new ByteArrayOutputStream();
+            System.setErr(new PrintStream(errContent));
+        }
+
+        @AfterEach
+        void restaurarStdErr() {
+            System.setErr(originalErr);
+        }
+
         @Test
-        @DisplayName("setParametros actualiza la clave correctamente")
+        @DisplayName("setParametros actualiza la clave correctamente con valor válido")
         void setParametrosActualizaClave() {
             Caesar caesar = new Caesar(3);
             caesar.setParametros(List.of(10));
@@ -170,32 +214,62 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("setParametros con lista vacía lanza excepción")
-        void setParametrosListaVacia() {
-            Caesar caesar = new Caesar();
-            assertThrows(ParametroIncorrecto.class,
-                    () -> caesar.setParametros(List.of()));
+        @DisplayName("setParametros con lista vacía NO cambia la clave y escribe a stderr")
+        void setParametrosListaVaciaNoLanzaExcepcion() {
+            Caesar caesar = new Caesar(3);
+            caesar.setParametros(List.of());
+            // La clave no debe cambiar
+            assertEquals(3, caesar.getParametros().get("translacion"));
+            // Debe haber escrito algo a stderr
+            assertTrue(errContent.toString().contains("número incorrecto"));
         }
 
         @Test
-        @DisplayName("setParametros con demasiados parámetros lanza excepción")
-        void setParametrosDemasiadosParametros() {
-            Caesar caesar = new Caesar();
-            assertThrows(ParametroIncorrecto.class,
-                    () -> caesar.setParametros(List.of(1, 2)));
+        @DisplayName("setParametros con demasiados parámetros NO cambia la clave")
+        void setParametrosDemasiadosParametrosNoLanzaExcepcion() {
+            Caesar caesar = new Caesar(3);
+            caesar.setParametros(List.of(1, 2));
+            assertEquals(3, caesar.getParametros().get("translacion"));
+            assertTrue(errContent.toString().contains("número incorrecto"));
         }
 
         @Test
-        @DisplayName("setParametros con 3 parámetros lanza excepción")
-        void setParametrosTresParametros() {
-            Caesar caesar = new Caesar();
-            assertThrows(ParametroIncorrecto.class,
-                    () -> caesar.setParametros(List.of(1, 2, 3)));
+        @DisplayName("setParametros con 3 parámetros NO cambia la clave")
+        void setParametrosTresParametrosNoLanzaExcepcion() {
+            Caesar caesar = new Caesar(5);
+            caesar.setParametros(List.of(1, 2, 3));
+            assertEquals(5, caesar.getParametros().get("translacion"));
         }
 
         @Test
-        @DisplayName("Cifrar tras setParametros usa nueva clave")
-        void cifrarTrasSetParametros() {
+        @DisplayName("setParametros con clave = 0 (inválida) NO cambia la clave")
+        void setParametrosConClaveCeroNoActualiza() {
+            Caesar caesar = new Caesar(3);
+            caesar.setParametros(List.of(0));
+            assertEquals(3, caesar.getParametros().get("translacion"));
+            assertTrue(errContent.toString().contains("no es correcto"));
+        }
+
+        @Test
+        @DisplayName("setParametros con clave negativa NO cambia la clave")
+        void setParametrosConClaveNegativaNoActualiza() {
+            Caesar caesar = new Caesar(3);
+            caesar.setParametros(List.of(-5));
+            assertEquals(3, caesar.getParametros().get("translacion"));
+        }
+
+        @Test
+        @DisplayName("setParametros con clave >= tamaño abecedario NO cambia la clave")
+        void setParametrosConClaveDemasiadoGrandeNoActualiza() {
+            Abecedario abc = new Abecedario();
+            Caesar caesar = new Caesar(3);
+            caesar.setParametros(List.of(abc.getSize()));
+            assertEquals(3, caesar.getParametros().get("translacion"));
+        }
+
+        @Test
+        @DisplayName("Cifrar tras setParametros válido usa nueva clave")
+        void cifrarTrasSetParametrosValido() {
             Caesar caesar = new Caesar(1);
             String cifrado1 = caesar.cifra("abc");
 
@@ -203,6 +277,27 @@ class CaesarTest {
             String cifrado2 = caesar.cifra("abc");
 
             assertNotEquals(cifrado1, cifrado2);
+        }
+
+        @Test
+        @DisplayName("Cifrar tras setParametros inválido sigue usando la clave anterior")
+        void cifrarTrasSetParametrosInvalidoUsaClaveAnterior() {
+            Caesar caesar = new Caesar(3);
+            String cifradoAntes = caesar.cifra("abc");
+
+            caesar.setParametros(List.of(0)); // inválido
+            String cifradoDespues = caesar.cifra("abc");
+
+            assertEquals(cifradoAntes, cifradoDespues);
+        }
+
+        @Test
+        @DisplayName("Multiples setParametros válidos aplican solo el último")
+        void multiplesSetParametros() {
+            Caesar caesar = new Caesar(1);
+            caesar.setParametros(List.of(5));
+            caesar.setParametros(List.of(10));
+            assertEquals(10, caesar.getParametros().get("translacion"));
         }
     }
 
@@ -224,7 +319,6 @@ class CaesarTest {
         @Test
         @DisplayName("Cifrar un solo carácter")
         void cifrarUnCaracter() {
-            // Abecedario personalizado simple para verificar manualmente
             List<Character> letras = List.of('a', 'b', 'c', 'd', 'e');
             Abecedario abc = new Abecedario(letras);
             Caesar caesar = new Caesar(1, abc);
@@ -232,15 +326,7 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Cifrar con clave 0 devuelve el mismo mensaje")
-        void cifrarConClaveCero() {
-            Caesar caesar = new Caesar(0);
-            String mensaje = "Hola Mundo!";
-            assertEquals(mensaje, caesar.cifra(mensaje));
-        }
-
-        @Test
-        @DisplayName("Cifrar produce texto diferente al original (clave > 0)")
+        @DisplayName("Cifrar produce texto diferente al original")
         void cifrarProduceTextoDiferente() {
             Caesar caesar = new Caesar(5);
             String mensaje = "Hola Mundo";
@@ -277,22 +363,21 @@ class CaesarTest {
             // 'z' no está en el abecedario, debe mantenerse
             String resultado = caesar.cifra("az");
             assertTrue(resultado.endsWith("z"));
+            assertEquals(2, resultado.length());
         }
 
         @ParameterizedTest
         @ValueSource(ints = {1, 2, 3, 5, 10, 20, 50})
-        @DisplayName("Cifrar con distintas claves produce resultados distintos")
+        @DisplayName("Cifrar con distintas claves produce resultados distintos al original")
         void cifrarConDistintasClaves(int clave) {
             Caesar caesar = new Caesar(clave);
             String mensaje = "TestMessage";
             String cifrado = caesar.cifra(mensaje);
-            if (clave > 0) {
-                assertNotEquals(mensaje, cifrado);
-            }
+            assertNotEquals(mensaje, cifrado);
         }
 
         @Test
-        @DisplayName("Cifrar mensaje largo")
+        @DisplayName("Cifrar mensaje largo preserva longitud")
         void cifrarMensajeLargo() {
             Caesar caesar = new Caesar(3);
             String mensaje = "a".repeat(10000);
@@ -301,11 +386,20 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Cifrar preserva longitud del mensaje")
+        @DisplayName("Cifrar preserva longitud del mensaje con caracteres mixtos")
         void cifrarPreservaLongitud() {
             Caesar caesar = new Caesar(7);
             String mensaje = "Hola Mundo 123!@#";
             assertEquals(mensaje.length(), caesar.cifra(mensaje).length());
+        }
+
+        @Test
+        @DisplayName("Cifrar carácter repetido produce un solo carácter distinto repetido")
+        void cifrarCaracterRepetido() {
+            Caesar caesar = new Caesar(5);
+            String mensaje = "aaaa";
+            String cifrado = caesar.cifra(mensaje);
+            assertEquals(1, cifrado.chars().distinct().count());
         }
     }
 
@@ -325,14 +419,6 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Descifrar con clave 0 devuelve el mismo mensaje")
-        void descifrarConClaveCero() {
-            Caesar caesar = new Caesar(0);
-            String mensaje = "Test123!";
-            assertEquals(mensaje, caesar.descifra(mensaje, List.of(0)));
-        }
-
-        @Test
         @DisplayName("Descifrar un carácter con abecedario personalizado")
         void descifrarUnCaracter() {
             List<Character> letras = List.of('a', 'b', 'c', 'd', 'e');
@@ -347,7 +433,7 @@ class CaesarTest {
             List<Character> letras = List.of('a', 'b', 'c', 'd', 'e');
             Abecedario abc = new Abecedario(letras);
             Caesar caesar = new Caesar(2, abc);
-            // 'a' con clave -2 => wrap -> 'd'
+            // 'a' descifrar con clave 2 => wrap -> 'd'
             assertEquals("d", caesar.descifra("a", List.of(2)));
         }
 
@@ -380,6 +466,15 @@ class CaesarTest {
             String descifrado = caesar.descifra(cifrado, List.of(1));
             assertEquals("az", descifrado);
         }
+
+        @Test
+        @DisplayName("Descifrar con clave 0 devuelve el mismo texto (sin cambios)")
+        void descifrarConClaveCero() {
+            Caesar caesar = new Caesar(5);
+            String texto = "Mensaje";
+            // Descifrar con clave 0 no debería alterar el texto
+            assertEquals(texto, caesar.descifra(texto, List.of(0)));
+        }
     }
 
     // =========================================================================
@@ -391,7 +486,7 @@ class CaesarTest {
     class IdaYVueltaTests {
 
         @ParameterizedTest
-        @ValueSource(ints = {0, 1, 2, 3, 5, 10, 20, 50})
+        @ValueSource(ints = {1, 2, 3, 5, 10, 20, 50})
         @DisplayName("Cifrar y descifrar devuelve el mensaje original (distintas claves)")
         void cifrarYDescifrarEsIdentidad(int clave) {
             Caesar caesar = new Caesar(clave);
@@ -447,8 +542,8 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Ida y vuelta con mensaje largo")
-        void idaYVueltaMensajeLargo() {
+        @DisplayName("Ida y vuelta con todos los caracteres ASCII imprimibles")
+        void idaYVueltaTodosLosCaracteres() {
             Caesar caesar = new Caesar(13);
             StringBuilder sb = new StringBuilder();
             for (int i = 32; i < 127; i++) {
@@ -474,6 +569,18 @@ class CaesarTest {
             String descifrado = caesar.descifra(cifrado, List.of(13));
             assertEquals(mensaje, descifrado);
         }
+
+        @Test
+        @DisplayName("Ida y vuelta con clave máxima")
+        void idaYVueltaClaveMaxima() {
+            Abecedario abc = new Abecedario();
+            int claveMaxima = abc.getSize() - 1;
+            Caesar caesar = new Caesar(claveMaxima);
+            String mensaje = "Test clave maxima";
+            String cifrado = caesar.cifra(mensaje);
+            String descifrado = caesar.descifra(cifrado, List.of(claveMaxima));
+            assertEquals(mensaje, descifrado);
+        }
     }
 
     // =========================================================================
@@ -485,7 +592,7 @@ class CaesarTest {
     class AbecedarioPersonalizadoTests {
 
         @Test
-        @DisplayName("Solo letras minúsculas: a->d, b->e, c->f con clave 3")
+        @DisplayName("Solo letras minúsculas: h->k, o->r, l->o, a->d con clave 3")
         void soloMinusculas() {
             List<Character> letras = new ArrayList<>();
             for (char c = 'a'; c <= 'z'; c++) letras.add(c);
@@ -495,42 +602,50 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Solo dígitos")
+        @DisplayName("Solo dígitos: 1->4, 2->5, 3->6")
         void soloDigitos() {
             List<Character> digitos = List.of('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
             Abecedario abc = new Abecedario(digitos);
             Caesar caesar = new Caesar(3, abc);
-            // 1->4, 2->5, 3->6
             assertEquals("456", caesar.cifra("123"));
         }
 
         @Test
-        @DisplayName("Solo dígitos con wrap-around")
+        @DisplayName("Solo dígitos con wrap-around: 8->1, 9->2, 0->3")
         void soloDigitosWrapAround() {
             List<Character> digitos = List.of('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
             Abecedario abc = new Abecedario(digitos);
             Caesar caesar = new Caesar(3, abc);
-            // 8->1, 9->2, 0->3
             assertEquals("123", caesar.cifra("890"));
         }
 
         @Test
-        @DisplayName("Abecedario de 2 caracteres")
+        @DisplayName("Abecedario de 2 caracteres: a->b, b->a")
         void abecedarioDeDos() {
             List<Character> ab = List.of('a', 'b');
             Abecedario abc = new Abecedario(ab);
             Caesar caesar = new Caesar(1, abc);
-            // a->b, b->a
             assertEquals("ba", caesar.cifra("ab"));
         }
 
         @Test
-        @DisplayName("Abecedario de 1 carácter: clave 0 no cambia nada")
-        void abecedarioDeUno() {
-            List<Character> uno = List.of('x');
-            Abecedario abc = new Abecedario(uno);
-            Caesar caesar = new Caesar(0, abc);
-            assertEquals("x", caesar.cifra("x"));
+        @DisplayName("Abecedario de 3 caracteres con clave 2")
+        void abecedarioDeTres() {
+            List<Character> letras = List.of('x', 'y', 'z');
+            Abecedario abc = new Abecedario(letras);
+            Caesar caesar = new Caesar(2, abc);
+            // x->z, y->x, z->y
+            assertEquals("zxy", caesar.cifra("xyz"));
+        }
+
+        @Test
+        @DisplayName("Caracteres no presentes en el abecedario se mantienen")
+        void caracteresNoPresentesSeMantienenConAbcPersonalizado() {
+            List<Character> letras = List.of('a', 'b', 'c');
+            Abecedario abc = new Abecedario(letras);
+            Caesar caesar = new Caesar(1, abc);
+            // 'a'->'b', '1' no está -> '1', 'c'->'a'
+            assertEquals("b1a", caesar.cifra("a1c"));
         }
     }
 
@@ -595,6 +710,20 @@ class CaesarTest {
             String dobleCifrado = caesarComplemento.cifra(cifrado);
             assertEquals(mensaje, dobleCifrado);
         }
+
+        @Test
+        @DisplayName("Cifrar con dos claves que suman N equivale a identidad")
+        void cifradoSumaClaves() {
+            List<Character> letras = new ArrayList<>();
+            for (char c = 'a'; c <= 'z'; c++) letras.add(c);
+            Abecedario abc = new Abecedario(letras);
+            // k1 + k2 = 26 (tamaño abc) => cifrar con k1 y k2 = identidad
+            Caesar c1 = new Caesar(10, abc);
+            Caesar c2 = new Caesar(16, abc);
+            String mensaje = "test";
+            String resultado = c2.cifra(c1.cifra(mensaje));
+            assertEquals(mensaje, resultado);
+        }
     }
 
     // =========================================================================
@@ -606,16 +735,6 @@ class CaesarTest {
     class CasosLimiteTests {
 
         @Test
-        @DisplayName("Cifrar cadena de un solo carácter repetido")
-        void cifrarCaracterRepetido() {
-            Caesar caesar = new Caesar(5);
-            String mensaje = "aaaa";
-            String cifrado = caesar.cifra(mensaje);
-            // Todos los caracteres cifrados deben ser iguales
-            assertEquals(1, cifrado.chars().distinct().count());
-        }
-
-        @Test
         @DisplayName("Cifrar preserva espacios")
         void cifrarPreservaEspacios() {
             Caesar caesar = new Caesar(3);
@@ -625,7 +744,7 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Cifrar con clave máxima válida (tamaño - 1)")
+        @DisplayName("Cifrar con clave máxima válida: ida y vuelta funciona")
         void cifrarConClaveMaxima() {
             Abecedario abc = new Abecedario();
             int claveMaxima = abc.getSize() - 1;
@@ -667,17 +786,16 @@ class CaesarTest {
         }
 
         @Test
-        @DisplayName("Mensaje con solo caracteres fuera del abecedario")
+        @DisplayName("Mensaje con solo caracteres fuera del abecedario no cambia")
         void mensajeSoloCaracteresFuera() {
             List<Character> letras = List.of('a', 'b', 'c');
             Abecedario abc = new Abecedario(letras);
             Caesar caesar = new Caesar(1, abc);
-            // 'xyz' no están en el abecedario
             assertEquals("xyz", caesar.cifra("xyz"));
         }
 
         @Test
-        @DisplayName("Mensaje mixto: algunos en abc, otros no")
+        @DisplayName("Mensaje mixto: ida y vuelta correcta")
         void mensajeMixto() {
             List<Character> letras = List.of('a', 'b', 'c');
             Abecedario abc = new Abecedario(letras);
@@ -685,6 +803,14 @@ class CaesarTest {
             String cifrado = caesar.cifra("axb");
             String descifrado = caesar.descifra(cifrado, List.of(1));
             assertEquals("axb", descifrado);
+        }
+
+        @Test
+        @DisplayName("Cifrar un solo carácter y descifrar devuelve el original")
+        void unSoloCaracterIdaYVuelta() {
+            Caesar caesar = new Caesar(10);
+            String cifrado = caesar.cifra("A");
+            assertEquals("A", caesar.descifra(cifrado, List.of(10)));
         }
     }
 
@@ -721,6 +847,18 @@ class CaesarTest {
             Caesar caesar = new Caesar(3);
             assertEquals("", caesar.descifra("", false));
         }
+
+        @Test
+        @DisplayName("descifra(msg, false) tras setParametros inválido usa clave original")
+        void descifraTrasSetParametrosInvalido() {
+            Caesar caesar = new Caesar(4);
+            String mensaje = "Test";
+            String cifrado = caesar.cifra(mensaje);
+
+            caesar.setParametros(List.of(0)); // inválido, no cambia
+
+            assertEquals(mensaje, caesar.descifra(cifrado, false));
+        }
     }
 
     // =========================================================================
@@ -754,6 +892,21 @@ class CaesarTest {
             assertEquals(mensaje, caesar.descifra(cifrado, List.of(8)));
             assertEquals(mensaje, caesar.descifra(cifrado, false));
         }
+
+        @Test
+        @DisplayName("Consistencia tras setParametros")
+        void consistenciaTrasSetParametros() {
+            Caesar caesar = new Caesar(3);
+            caesar.setParametros(List.of(12));
+            String mensaje = "Cambio de clave";
+            String cifrado = caesar.cifra(mensaje);
+
+            String descifrado1 = caesar.descifra(cifrado, List.of(12));
+            String descifrado2 = caesar.descifra(cifrado, false);
+
+            assertEquals(descifrado1, descifrado2);
+            assertEquals(mensaje, descifrado1);
+        }
     }
 
     // =========================================================================
@@ -775,7 +928,6 @@ class CaesarTest {
             long tiempo = System.nanoTime() - inicio;
 
             assertEquals(100000, cifrado.length());
-            // Debe completarse en menos de 2 segundos
             assertTrue(tiempo < 2_000_000_000L, "Cifrado demasiado lento: " + tiempo / 1_000_000 + "ms");
         }
 
@@ -806,14 +958,14 @@ class CaesarTest {
         @Test
         @DisplayName("Caesar implementa Algoritmo")
         void caesarImplementaAlgoritmo() {
-            Caesar caesar = new Caesar();
+            Caesar caesar = new Caesar(1);
             assertInstanceOf(app.algoritmos_criptograficos.Algoritmo.class, caesar);
         }
 
         @Test
         @DisplayName("getKeys devuelve las claves del mapa de parámetros")
         void getKeysDevuelveClaves() {
-            Caesar caesar = new Caesar();
+            Caesar caesar = new Caesar(3);
             Set<String> keys = caesar.getKeys(caesar.getParametros());
             assertTrue(keys.contains("translacion"));
             assertEquals(1, keys.size());
@@ -829,4 +981,3 @@ class CaesarTest {
         }
     }
 }
-
