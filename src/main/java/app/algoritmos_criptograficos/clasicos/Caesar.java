@@ -6,6 +6,39 @@ import app.ParametroIncorrecto;
 
 import java.util.*;
 
+/**
+ * Implementación del cifrado César — algoritmo de sustitución monoalfabética por desplazamiento.
+ *
+ * <p>El cifrado César es uno de los cifrados más antiguos y simples conocidos. Cada carácter
+ * del texto plano se sustituye por otro carácter que se encuentra un número fijo de posiciones
+ * más adelante en el abecedario. Este número fijo se denomina <b>clave de translación</b>.</p>
+ *
+ * <p><b>Fórmula de cifrado:</b> {@code C(x) = abc[(indexOf(x) + k) mod N]}</p>
+ * <p><b>Fórmula de descifrado:</b> {@code D(x) = abc[(indexOf(x) - k + N) mod N]}</p>
+ *
+ * <p>Donde {@code x} es el carácter, {@code k} es la clave de translación, {@code N} es el
+ * tamaño del abecedario y {@code abc} es la lista de caracteres del abecedario.</p>
+ *
+ * <h3>Ejemplo de uso:</h3>
+ * <pre>{@code
+ * Caesar caesar = new Caesar(5);
+ * String cifrado = caesar.cifra("Hola Mundo!");
+ * String descifrado = caesar.descifra(cifrado, List.of(5));
+ * // descifrado == "Hola Mundo!"
+ * }</pre>
+ *
+ * <h3>Restricciones:</h3>
+ * <ul>
+ *   <li>La clave debe ser estrictamente mayor que 0 y menor que el tamaño del abecedario.</li>
+ *   <li>Los caracteres que no pertenecen al abecedario se mantienen sin cambios.</li>
+ * </ul>
+ *
+ * @author Sergio Escalante Presa
+ * @version 1.0
+ * @see Algoritmo
+ * @see Abecedario
+ * @see app.ParametroIncorrecto
+ */
 public class Caesar implements Algoritmo {
     private static final String nombre = "Caesar";
     private Map<String, Integer> parametros;

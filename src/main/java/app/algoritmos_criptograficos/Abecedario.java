@@ -4,6 +4,24 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Gestiona un conjunto ordenado de caracteres (abecedario) sobre el que operan
+ * los algoritmos criptográficos.
+ *
+ * <p>Soporta dos modos de creación:</p>
+ * <ul>
+ *   <li><b>Por defecto</b>: Caracteres ASCII imprimibles (códigos 0–127, excluyendo
+ *       caracteres de control y DEL). Resultado: 96 caracteres.</li>
+ *   <li><b>Personalizado</b>: Cualquier lista de caracteres proporcionada por el usuario.</li>
+ * </ul>
+ *
+ * <p>La lista de caracteres es inmutable desde el exterior para garantizar la integridad
+ * del abecedario durante las operaciones de cifrado/descifrado.</p>
+ *
+ * @author Sergio Escalante Presa
+ * @version 1.0
+ * @see app.algoritmos_criptograficos.Algoritmo
+ */
 public class Abecedario {
 
     private final List<Character> caracteres;
