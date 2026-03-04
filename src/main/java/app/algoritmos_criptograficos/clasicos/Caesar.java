@@ -68,15 +68,7 @@ public class Caesar implements Algoritmo {
         StringBuilder resultado = new StringBuilder(mensaje.length());
 
         for (char caracter : mensaje.toCharArray()) {
-            int posicion = abecedario.indexOf(caracter);
-            if (posicion != -1) {
-                // Carácter encontrado en el abecedario: aplicar translación
-                int nuevaPosicion = (posicion + key) % abcSize;
-                resultado.append(abc.get(nuevaPosicion));
-            } else {
-                // Carácter no está en el abecedario: mantenerlo sin cambios
-                resultado.append(caracter);
-            }
+            resultado.append(translada(caracter, key, false));
         }
 
         return resultado.toString();
