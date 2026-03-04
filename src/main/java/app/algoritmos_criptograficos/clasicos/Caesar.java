@@ -8,12 +8,12 @@ import java.util.*;
 
 public class Caesar implements Algoritmo {
     private static final String nombre = "Caesar";
-    private Dictionary<String, Integer> parametros;
+    private Map<String, Integer> parametros;
     private Abecedario abecedario;
 
     public Caesar(){
         this.abecedario = new Abecedario();
-        this.parametros = new Hashtable<>(1);
+        this.parametros = new HashMap<>(1);
         parametros.put("translacion", 2);
 
     }
@@ -23,7 +23,7 @@ public class Caesar implements Algoritmo {
         if(clave >= abecedario.getSize()) {
             throw new ParametroIncorrecto("Translacion demasiado grande. Pon un numero más pequeño");
         }
-        this.parametros = new Hashtable<>(1);
+        this.parametros = new HashMap<>(1);
         parametros.put("translacion", clave);
     }
 
@@ -32,13 +32,13 @@ public class Caesar implements Algoritmo {
         if(clave >= abecedario.getSize()) {
             throw new ParametroIncorrecto("Translacion demasiado grande. Pon un numero más pequeño");
         }
-        this.parametros = new Hashtable<>(1);
+        this.parametros = new HashMap<>(1);
         parametros.put("translacion", clave);
     }
 
     @Override
-    public Dictionary<String, Integer> getParametros() {
-        return parametros;
+    public Map<String, Integer> getParametros() {
+        return Collections.unmodifiableMap(parametros);
     }
 
     @Override
@@ -62,44 +62,78 @@ public class Caesar implements Algoritmo {
 
     @Override
     public String cifra(String mensaje) {
-        return "";
+        int key = parametros.get("translacion");
+        List<Character> abc = abecedario.getCaracteres();
+        int abcSize = abc.size();
+        StringBuilder resultado = new StringBuilder(mensaje.length());
+
+        for (char caracter : mensaje.toCharArray()) {
+            int posicion = abecedario.indexOf(caracter);
+            if (posicion != -1) {
+                // Carácter encontrado en el abecedario: aplicar translación
+                int nuevaPosicion = (posicion + key) % abcSize;
+                resultado.append(abc.get(nuevaPosicion));
+            } else {
+                // Carácter no está en el abecedario: mantenerlo sin cambios
+                resultado.append(caracter);
+            }
+        }
+
+        return resultado.toString();
+    }
+
+    private char translada(char caracter, int key, boolean retroceso) {
+        List<Character> abc = abecedario.getCaracteres();
+        int abcSize = abc.size();
+        int posicion = abecedario.indexOf(caracter);
+
+        if (posicion == -1) {
+            // Carácter no está en el abecedario: devolver sin cambios
+            return caracter;
+        }
+
+        int nuevaPosicion;
+        if (retroceso) {
+            nuevaPosicion = (posicion - key + abcSize) % abcSize;
+        } else {
+            nuevaPosicion = (posicion + key) % abcSize;
+        }
+
+        return abc.get(nuevaPosicion);
     }
 
     private String descifraBruta(String mensajeCifrado) {
-        String resultado;
-        Scanner scanner = new Scanner(System.in);
-        List<Integer> key = new ArrayList<>(1);
-        key.set(0, 0);
-        Boolean descifrado = false;
-        do {
-            System.out.println("Probando con key: " + key.get(0));
-            resultado = descifra(mensajeCifrado, key);
-            System.out.println("Mensahe obtenido con key " + key.get(0) +":\n" + resultado);
-            String input="";
-            do {
-                System.out.println("¿Está correctamente descifrado? (S/N)\n");
-                if(scanner.hasNextLine()) {
-                    input = scanner.nextLine();
-                }
-            } while (!input.equals("S") && !input.equals("N"));
+        String resultado = "";
+        try (Scanner scanner = new Scanner(System.in)) {
+            List<Integer> key = new ArrayList<>(1);
+            key.add(0);
+            boolean descifrado = false;
 
-            switch (input){
-                case "S" -> descifrado = true;
-                case "N" -> key.set(0, key.get(0) + 1);
+            while (!descifrado && key.get(0) < abecedario.getSize()) {
+                System.out.println("Probando con key: " + key.get(0));
+                resultado = descifra(mensajeCifrado, key);
+                System.out.println("Mensaje obtenido con key " + key.get(0) + ":\n" + resultado);
+                descifrado = isDescifrado(scanner, "", false, key);
             }
-
-        } while (!descifrado);
+        }
 
         return resultado;
     }
 
     @Override
     public String descifra(String mensajeCifrado, List<Integer> parametrosParaDescifrar) {
-        return "";
+        int key = parametrosParaDescifrar.get(0);
+        StringBuilder resultado = new StringBuilder(mensajeCifrado.length());
+
+        for (char caracter : mensajeCifrado.toCharArray()) {
+            resultado.append(translada(caracter, key, true));
+        }
+
+        return resultado.toString();
     }
 
     @Override
-    public String descifra(String mensajeCifrado, Boolean fuerzaBruta) {
+    public String descifra(String mensajeCifrado, boolean fuerzaBruta) {
         String resultado;
         if(fuerzaBruta) {
             resultado = descifraBruta(mensajeCifrado);

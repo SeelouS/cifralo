@@ -58,6 +58,10 @@ public class Abecedario {
         return caracteres.get(indice);
     }
 
+    public int indexOf(char caracter) {
+        return this.caracteres.indexOf(caracter);
+    }
+
     @Override
     public String toString() {
         return caracteres.toString();
